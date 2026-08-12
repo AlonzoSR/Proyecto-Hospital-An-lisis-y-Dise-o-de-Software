@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Soporte Técnico | Centro de Ayuda</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; }
+        .header { background: #34495e; color: #fff; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .header-buttons { display: flex; gap: 10px; align-items: center; }
+        .btn-logout { background: #e74c3c; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        
+        .container { padding: 20px; max-width: 1200px; margin: 0 auto; }
+        
+        .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-top: 4px solid #9b59b6; }
+        .card h3 { margin-top: 0; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 0.95em; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #555; text-transform: uppercase; font-size: 0.85em; }
+        
+        .badge-pendiente { background: #f39c12; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+        .badge-resuelto { background: #2ecc71; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
+        
+        .btn-action { border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; font-size: 0.85em; margin-right: 5px; transition: background 0.3s;}
+        .btn-resolver { background: #2ecc71; }
+        .btn-resolver:hover { background: #27ae60; }
+        .btn-eliminar { background: #34495e; }
+        .btn-eliminar:hover { background: #2c3e50; }
+        
+        .meta-info { font-size: 0.85em; color: #7f8c8d; display: block; margin-top: 4px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <!-- AQUÍ AGREGAMOS EL NOMBRE DEL TÉCNICO LOGUEADO -->
+        <h2> Módulo 7: Soporte Técnico | Centro de Ayuda | Bienvenido(a) {{ tecnico.nombre }}</h2>
+        <div class="header-buttons">
+            <a href="{% url 'login' %}" class="btn-logout">Cerrar Sesión </a>
+        </div>
+    </div>
+
+    <div class="container">
+        {% if not en_turno %}
+    <div style="background-color: #e74c3c; color: white; text-align: center; padding: 12px; font-weight: bold; border-radius: 5px; margin-bottom: 20px;">
+        ⛔ USTED SE ENCUENTRA FUERA DE SU HORARIO LABORAL. LAS FUNCIONES DE REGISTRO ESTÁN DESACTIVADAS.
+    </div>
+{% endif %}
+        <div class="card">
+            <h3> Bandeja Principal de Tickets de Soporte</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Reportó / Área</th>
+                        <th>Descripción de la Falla</th>
+                        <th>Estado</th>
+                        <th>Acciones de Sistemas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ticket in tickets %}
+                    <tr>
+                        <td>
+                            <strong>{{ ticket.empleado }}</strong>
+                            <span class="meta-info">📍 {{ ticket.area }}</span>
+                        </td>
+                        <td>
+                            {{ ticket.falla }}
+                            <span class="meta-info">🕒 {{ ticket.fecha|date:"d/m/Y H:i" }}</span>
+                        </td>
+                        <td>
+                            {% if ticket.estado == 'Pendiente' %}
+                                <span class="badge-pendiente">⏳ Pendiente</span>
+                            {% else %}
+                                <span class="badge-resuelto">✓ Resuelto</span>
+                                <!-- AQUÍ MOSTRAMOS QUIÉN RESOLVIÓ USANDO TU CLASE META-INFO -->
+                                <span class="meta-info">Resuelto por: <strong style="color: #2c3e50;">{{ ticket.resuelto_por|default:"Técnico Anterior" }}</strong></span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if en_turno %}
+                                <form action="{% url 'soporte' %}" method="POST" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="accion" value="resolver_ticket">
+                                    <input type="hidden" name="id" value="{{ ticket.id }}">
+                                    {% if ticket.estado == 'Pendiente' %}
+                                        <button type="submit" class="btn-action btn-resolver">Marcar Resuelto</button>
+                                    {% endif %}
+                                </form>
+                                <form action="{% url 'soporte' %}" method="POST" style="display:inline;">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="accion" value="eliminar_ticket">
+                                    <input type="hidden" name="id" value="{{ ticket.id }}">
+                                    <button type="submit" class="btn-action btn-eliminar">🗑️</button>
+                                </form>
+                            {% else %}
+                                <span style="color: #e74c3c; font-weight: bold; font-size: 0.85em;">🚫 Fuera de horario</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 30px; color: #7f8c8d;">
+                            🎉 ¡Excelente! No hay fallas reportadas en este momento.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</body>
+</html>

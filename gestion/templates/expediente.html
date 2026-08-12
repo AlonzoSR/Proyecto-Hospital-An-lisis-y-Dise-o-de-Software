@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Expediente - {{ paciente.nombre }}</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .expediente-header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 30px 0; margin-bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .metric-badge { background: #eef2f7; padding: 15px; border-radius: 10px; text-align: center; border-left: 4px solid #2a5298; height: 100%; }
+        .metric-badge .label { font-size: 0.8rem; text-transform: uppercase; color: #6c757d; font-weight: 700; margin-bottom: 5px;}
+        .metric-badge .value { font-size: 1.2rem; font-weight: 700; color: #2c3e50; }
+    </style>
+</head>
+<body>
+
+    <!-- Encabezado Espacioso -->
+    <div class="expediente-header">
+        <div class="container-fluid px-5">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1 fw-bold">Expediente Clínico</h2>
+                    <h5 class="text-light opacity-75 mb-0">{{ paciente.nombre }} {{ paciente.apellido_paterno }} {{ paciente.apellido_materno|default:"" }}</h5>
+                </div>
+                <div>
+                    <a href="{% url 'administrador' %}" class="btn btn-light btn-lg fw-bold shadow-sm">⬅ Volver al Panel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor Fluido para aprovechar toda la pantalla -->
+    <div class="container-fluid px-5 mb-5">
+        
+        <!-- Mensajes del sistema -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show mb-4" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Ficha de Identificación Completa -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-primary text-white py-3">
+                <h5 class="mb-0 fw-bold">📋 Ficha de Identificación del Paciente</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-4">
+                    <div class="col-md-3">
+                        <div class="metric-badge">
+                            <div class="label">CURP</div>
+                            <div class="value fs-6">{{ paciente.curp }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="metric-badge" style="border-left-color: #17a2b8;">
+                            <div class="label">Edad</div>
+                            <div class="value">{% if paciente.edad %}{{ paciente.edad }} años{% else %}<span class="text-muted fs-6">N/E</span>{% endif %}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="metric-badge" style="border-left-color: #e83e8c;">
+                            <div class="label">Género</div>
+                            <div class="value">{% if paciente.genero %}{{ paciente.genero }}{% else %}<span class="text-muted fs-6">N/E</span>{% endif %}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-badge" style="border-left-color: #28a745;">
+                            <div class="label">Teléfono</div>
+                            <div class="value">{{ paciente.telefono }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="metric-badge" style="border-left-color: #dc3545;">
+                            <div class="label">Sangre</div>
+                            <div class="value text-danger">{{ paciente.tipo_sangre }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Columna Izquierda: Signos Vitales (Ancho 4) -->
+            <div class="col-lg-4">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-info text-dark py-3">
+                        <h5 class="mb-0 fw-bold">🩺 Historial de Signos Vitales</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if signos %}
+                            <div class="list-group list-group-flush" style="max-height: 600px; overflow-y: auto;">
+                            {% for signo in signos %}
+                                <div class="list-group-item p-4">
+                                    <span class="badge bg-secondary mb-3 fs-6">{{ signo.fecha|date:"d M Y - H:i" }}</span>
+                                    <div class="row g-2 text-center">
+                                        <div class="col-6"><div class="bg-light p-2 rounded"><small class="d-block text-muted">Presión</small><strong>{{ signo.presion }}</strong></div></div>
+                                        <div class="col-6"><div class="bg-light p-2 rounded"><small class="d-block text-muted">Temp</small><strong>{{ signo.temperatura }} °C</strong></div></div>
+                                        <div class="col-4"><div class="bg-light p-2 rounded"><small class="d-block text-muted">Peso</small><strong>{{ signo.peso }} kg</strong></div></div>
+                                        <div class="col-4"><div class="bg-light p-2 rounded"><small class="d-block text-muted">Talla</small><strong>{{ signo.estatura }} m</strong></div></div>
+                                        <div class="col-4"><div class="bg-light p-2 rounded"><small class="d-block text-muted">SpO2</small><strong>{{ signo.oxigenacion }}%</strong></div></div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="p-5 text-center text-muted fs-5">No hay registros de signos vitales capturados.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Consultas Médicas (Ancho 8) -->
+            <div class="col-lg-8">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-success text-white py-3">
+                        <h5 class="mb-0 fw-bold">📋 Historial de Consultas Médicas</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        {% if consultas %}
+                            <div class="accordion" id="accordionConsultas">
+                                {% for consulta in consultas %}
+                                <div class="accordion-item mb-3 border rounded shadow-sm">
+                                    <h2 class="accordion-header" id="heading{{ consulta.id }}">
+                                        <button class="accordion-button collapsed fs-5" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ consulta.id }}">
+                                            <!-- CAMBIO APLICADO AQUÍ: se agregó - H:i al formato de la fecha -->
+                                            <strong>📅 {{ consulta.fecha|date:"d M Y - H:i" }}</strong> &nbsp;|&nbsp; Atendió: <span class="text-primary ms-2">{{ consulta.medico_nombre }}</span>
+                                        </button>
+                                    </h2>
+                                    <div id="collapse{{ consulta.id }}" class="accordion-collapse collapse" data-bs-parent="#accordionConsultas">
+                                        <div class="accordion-body p-4 bg-light">
+                                            <h6 class="text-primary fw-bold text-uppercase mb-2">Diagnóstico:</h6>
+                                            <p class="fs-5 bg-white p-3 rounded border">{{ consulta.diagnostico }}</p>
+                                            
+                                            <h6 class="text-success fw-bold text-uppercase mb-2 mt-4">Receta / Tratamiento:</h6>
+                                            <p class="fs-5 bg-white p-3 rounded border" style="white-space: pre-line;">{{ consulta.receta }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="p-5 text-center text-muted fs-5">Este paciente aún no tiene consultas registradas en su historial.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

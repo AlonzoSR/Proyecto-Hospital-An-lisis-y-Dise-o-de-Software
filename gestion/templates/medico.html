@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Médico | Consulta</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; }
+        
+        .header { background: #2c3e50; color: #fff; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .header-buttons { display: flex; gap: 10px; align-items: center; }
+        
+        .btn-logout { background: #e74c3c; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        .btn-reportar { background: #f39c12; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 0.9em; transition: background 0.3s; }
+        .btn-reportar:hover { background: #e67e22; }
+        
+        .container { padding: 20px; }
+        
+        .messages { margin-bottom: 20px; }
+        .alert { padding: 15px; border-radius: 5px; font-weight: bold; color: white; margin-bottom: 10px; background: #2ecc71; border: 1px solid #27ae60; }
+
+        .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        
+        .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .card h3 { margin-top: 0; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 0.9em; font-weight: bold; color: #555; margin-bottom: 5px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .form-group textarea { resize: vertical; height: 100px; }
+        
+        .btn-submit { width: 100%; background: #007bff; color: white; border: none; padding: 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 1em; }
+        .btn-submit:hover { background: #0056b3; }
+        .btn-purple { background: #9b59b6; }
+        .btn-print { background: #27ae60; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85em; }
+        .btn-print:hover { background: #219150; }
+
+        /* Tarjeta de Signos Vitales */
+        .signos-card { background: #f0f8ff; border: 1px solid #cce5ff; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .signos-header { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 10px; color: #004085; border-bottom: 1px solid #b8daff; padding-bottom: 5px; }
+        .signos-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center; }
+        .signos-box { background: white; padding: 10px; border-radius: 5px; border: 1px solid #eee; }
+        .signos-box strong { display: block; color: #555; font-size: 0.75em; text-transform: uppercase; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #555; }
+
+        /* Modal Soporte */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); z-index: 1000; justify-content: center; align-items: center;
+            backdrop-filter: blur(2px);
+        }
+        .modal-content {
+            background: white; padding: 25px; border-radius: 8px; width: 100%; max-width: 450px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative;
+            border-top: 5px solid #9b59b6; animation: modalFadeIn 0.3s;
+        }
+        @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .close-modal {
+            position: absolute; top: 15px; right: 15px; background: none; border: none;
+            font-size: 1.2em; cursor: pointer; color: #7f8c8d; transition: color 0.2s;
+        }
+        .close-modal:hover { color: #c0392b; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2> Módulo 4: Panel Médico | Bienvenido(a) Dr(a). {{ medico.nombre }}</h2>
+        <div class="header-buttons">
+            <button class="btn-reportar" onclick="abrirModalSoporte()">⚠️ Reportar Falla</button>
+            <a href="{% url 'login' %}" class="btn-logout">Cerrar Sesión </a>
+        </div>
+    </div>
+
+    <div class="container">
+        {% if not en_turno %}
+    <div style="background-color: #e74c3c; color: white; text-align: center; padding: 12px; font-weight: bold; border-radius: 5px; margin-bottom: 20px;">
+        ⛔ USTED SE ENCUENTRA FUERA DE SU HORARIO LABORAL. LAS FUNCIONES DE REGISTRO ESTÁN DESACTIVADAS.
+    </div>
+{% endif %}
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="alert">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="grid">
+            
+            <!-- COLUMNA IZQUIERDA: FORMULARIO DE CONSULTA -->
+            <div>
+                <div class="card" style="border-top: 4px solid #007bff;">
+                    <h3> Nueva Consulta Médica</h3>
+                    <form action="{% url 'medico' %}" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="guardar_consulta">
+                        
+                        <div class="form-group">
+                            <label>Seleccionar Paciente (En Cola):</label>
+                           
+                            <select name="paciente_id" required>
+                                <option value="">-- Selecciona un Paciente --</option>
+                                {% for cita in citas_asignadas %}
+                                    <option value="{{ cita.paciente.id }}" 
+                                        {% if hay_emergencia and "EMERGENCIA" not in cita.motivo %}
+                                            disabled
+                                        {% elif cita.fuera_de_hora %}
+                                            disabled
+                                        {% endif %}>
+            
+                                        {% if "EMERGENCIA" in cita.motivo %}
+                                            🚨 [EMERGENCIA] {{ cita.hora }} - {{ cita.paciente.nombre }} {{ cita.paciente.apellido_paterno }}
+                                        {% elif cita.fuera_de_hora %}
+                                            ⏳ {{ cita.hora }} hrs - {{ cita.paciente.nombre }} {{ cita.paciente.apellido_paterno }} (Aún no es su hora de cita)
+                                        {% else %}
+                                            {{ cita.hora }} hrs - {{ cita.paciente.nombre }} {{ cita.paciente.apellido_paterno }}
+                                        {% endif %}
+                                    </option>
+                                {% empty %}
+                                    <option value="" disabled>No tienes pacientes asignados hoy en sala de espera.</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Diagnóstico Médico:</label>
+                            <textarea name="diagnostico" placeholder="Escribe la valoración del paciente..." required></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Tratamiento / Receta Médica:</label>
+                            <textarea name="receta" placeholder="Ej: Paracetamol 500mg cada 8 horas por 5 días." required></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn-submit" {% if not en_turno %}disabled style="opacity:0.5; cursor:not-allowed;"{% endif %}>Guardar Consulta y Emitir Receta </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- COLUMNA DERECHA: SIGNOS VITALES E HISTORIAL -->
+            <div>
+                <div class="card" style="border-top: 4px solid #1abc9c;">
+                    <h3>🌡️ Signos Vitales </h3>
+                    {% for sv in signos %}
+                    <div class="signos-card">
+                        <div class="signos-header">
+                            <span><strong>Paciente:</strong> {{ sv.paciente.nombre }} {{ sv.paciente.apellido_paterno }}</span>
+                            <span>{{ sv.fecha|date:'d/m/Y - H:i' }} hrs</span>
+                        </div>
+                        <div class="signos-grid">
+                            <div class="signos-box">
+                                <strong>Presión</strong> {{ sv.presion }}
+                            </div>
+                            <div class="signos-box">
+                                <strong>Temp.</strong> {{ sv.temperatura }} °C
+                            </div>
+                            <div class="signos-box">
+                                <strong>Peso / Talla</strong> {{ sv.peso }}kg / {{ sv.estatura }}m
+                            </div>
+                            <div class="signos-box">
+                                <strong>Oxígeno</strong>
+                                {% if sv.oxigenacion < 90 %}
+                                    <span style="color: #e74c3c; font-weight: bold;">{{ sv.oxigenacion }}% ⚠️</span>
+                                {% else %}
+                                    {{ sv.oxigenacion }}%
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                        <p style="color: #7f8c8d; text-align: center;">Tus pacientes asignados aún no han pasado por enfermería.</p>
+                    {% endfor %}
+                </div>
+
+                <div class="card" style="border-top: 4px solid #34495e;">
+                    <h3>📋 Tu Historial de Consultas Emitidas</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Paciente</th>
+                                <th>Diagnóstico</th>
+                                <th>Receta</th>
+                                <th>Fecha</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in consultas %}
+                            <tr>
+                                <td><strong>{{ c.paciente.nombre }} {{ c.paciente.apellido_paterno }}</strong></td>
+                                <td>{{ c.diagnostico }}</td>
+                                <td>{{ c.receta }}</td>
+                                <td><small>{{ c.fecha|date:'d M - H:i' }}</small></td>
+                                <td>
+                                    <button type="button" class="btn-print"
+                                            data-paciente="{{ c.paciente.nombre }} {{ c.paciente.apellido_paterno }}"
+                                            data-medico="{{ c.medico_nombre }}"
+                                            data-diagnostico="{{ c.diagnostico }}"
+                                            data-receta="{{ c.receta }}"
+                                            data-fecha="{{ c.fecha|date:'d/m/Y H:i' }}"
+                                            onclick="prepararImpresion(this)">🖨️ Receta</button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" style="text-align: center;">No has registrado consultas médicas aún.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODAL SOPORTE TÉCNICO -->
+    <div class="modal-overlay" id="modalSoporte">
+        <div class="modal-content">
+            <button class="close-modal" onclick="cerrarModalSoporte()">✖</button>
+            <h3 style="margin-top: 0; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px;">🚨 Reportar Falla del Sistema</h3>
+            
+            <form action="{% url 'medico' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="nuevo_ticket">
+                <input type="hidden" name="area" value="Consultorio Médico">
+                
+                <div class="form-group">
+                    <label>Tu Nombre / Médico:</label>
+                    <input type="text" name="empleado" value="Dr(a). {{ medico.nombre }}" required readonly style="background: #f8f9fa;">
+                </div>
+                
+                <div class="form-group">
+                    <label>Descripción del Problema:</label>
+                    <textarea name="falla" placeholder="Ej: No puedo visualizar el expediente del paciente..." required style="height: 80px;"></textarea>
+                </div>
+                
+                <button type="submit" class="btn-submit btn-purple">Generar Ticket de Soporte 🎫</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // LÓGICA DE MODAL SOPORTE
+        const modalSoporte = document.getElementById('modalSoporte');
+        
+        function abrirModalSoporte() {
+            modalSoporte.style.display = 'flex';
+        }
+        
+        function cerrarModalSoporte() {
+            modalSoporte.style.display = 'none';
+        }
+        
+        window.addEventListener('click', function(event) {
+            if (event.target === modalSoporte) {
+                cerrarModalSoporte();
+            }
+        });
+
+        // PREPARAR DATOS DESDE EL BOTÓN
+        function prepararImpresion(btn) {
+            const paciente = btn.getAttribute('data-paciente');
+            const medico = btn.getAttribute('data-medico');
+            const diagnostico = btn.getAttribute('data-diagnostico');
+            const receta = btn.getAttribute('data-receta');
+            const fecha = btn.getAttribute('data-fecha');
+            
+            imprimirReceta(paciente, medico, diagnostico, receta, fecha);
+        }
+
+        // IMPRESIÓN LIMPIA DE RECETA MÉDICA
+        function imprimirReceta(paciente, medico, diagnostico, receta, fecha) {
+            const ventana = window.open('', '_blank', 'width=800,height=600');
+            ventana.document.write(`
+                <!DOCTYPE html>
+                <html lang="es">
+                <head>
+                    <title>Receta Médica - ${paciente}</title>
+                    <style>
+                        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #333; line-height: 1.6; }
+                        .receta-header { text-align: center; border-bottom: 2px solid #2c3e50; padding-bottom: 15px; margin-bottom: 20px; }
+                        .receta-header h1 { margin: 0; color: #2c3e50; font-size: 24px; }
+                        .receta-header p { margin: 5px 0 0 0; color: #7f8c8d; font-size: 14px; }
+                        .info-grid { display: flex; justify-content: space-between; margin-bottom: 25px; background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #e9ecef; }
+                        .section-title { font-weight: bold; color: #2c3e50; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 20px; text-transform: uppercase; font-size: 13px; }
+                        .box-content { background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 6px; margin-top: 8px; font-size: 15px; white-space: pre-wrap; }
+                        .firma { margin-top: 60px; text-align: center; }
+                        .linea-firma { border-top: 1px solid #000; width: 250px; margin: 0 auto 10px auto; }
+                        @media print { .no-print { display: none; } }
+                    </style>
+                </head>
+                <body>
+                    <div class="no-print" style="text-align: right; margin-bottom: 20px;">
+                        <button onclick="window.print()" style="background: #007bff; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer;">🖨️ Imprimir Receta</button>
+                    </div>
+                    <div class="receta-header">
+                        <h1> SISTEMA HOSPITALARIO CENTRAL</h1>
+                        <p>Receta Médica Oficial | Consulta Externa</p>
+                    </div>
+                    <div class="info-grid">
+                        <div>
+                            <strong>Paciente:</strong> ${paciente}<br>
+                            <strong>Atendido por:</strong> ${medico}
+                        </div>
+                        <div style="text-align: right;">
+                            <strong>Fecha de Atención:</strong> ${fecha}
+                        </div>
+                    </div>
+                    <div class="section-title">Diagnóstico Médico</div>
+                    <div class="box-content">${diagnostico}</div>
+                    <div class="section-title">Tratamiento e Indicaciones Médicas</div>
+                    <div class="box-content" style="min-height: 120px;">${receta}</div>
+                    <div class="firma">
+                        <div class="linea-firma"></div>
+                        <strong>Firma y Cédula Profesional del Médico</strong><br>
+                        <small>${medico}</small>
+                    </div>
+                </body>
+                </html>
+            `);
+            ventana.document.close();
+        }
+    </script>
+</body>
+</html>

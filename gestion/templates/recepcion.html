@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Recepción Central | Control de Citas</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; }
+        
+        .header { background: #34495e; color: #fff; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .header-buttons { display: flex; gap: 10px; align-items: center; }
+        
+        .btn-logout { background: #e74c3c; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        
+        .btn-reportar { background: #f39c12; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 1em; transition: background 0.3s; }
+        .btn-reportar:hover { background: #e67e22; }
+
+        .container { padding: 20px; }
+        
+        .messages { margin-bottom: 20px; }
+        .alert { padding: 15px; border-radius: 5px; font-weight: bold; color: white; margin-bottom: 10px; }
+        .alert-success { background: #2ecc71; border: 1px solid #27ae60; }
+        .alert-error { background: #e74c3c; border: 1px solid #c0392b; }
+
+        .top-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        
+        .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-top: 4px solid #3498db; }
+        .card h3 { margin-top: 0; color: #2c3e50; font-size: 1.1em; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 0.85em; font-weight: bold; color: #555; margin-bottom: 5px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .form-group textarea { resize: vertical; height: 80px; font-family: inherit; }
+        
+        .btn-submit { width: 100%; background: #2ecc71; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-blue { background: #3498db; }
+        .btn-purple { background: #9b59b6; }
+        
+        .emergencia-bar {
+            background-color: #fceae9; border-left: 6px solid #e74c3c; padding: 15px 20px;
+            border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between;
+            align-items: center; box-shadow: 0 2px 10px rgba(231, 76, 60, 0.15);
+        }
+
+        .table-section { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-top: 4px solid #9b59b6; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #555; }
+        .badge-warning { background: #f1c40f; color: #000; padding: 4px 8px; border-radius: 12px; font-weight: bold; font-size: 0.8em; }
+        .badge-danger { background: #e74c3c; color: #fff; padding: 4px 8px; border-radius: 12px; font-weight: bold; font-size: 0.8em; }
+        .badge-extra { background: #e67e22; color: #fff; padding: 4px 8px; border-radius: 12px; font-weight: bold; font-size: 0.8em; }
+
+        .horarios-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-top: 10px; }
+        .slot-btn { padding: 8px 5px; border-radius: 6px; border: 1px solid #ccc; background: #f9f9f9; cursor: pointer; text-align: center; font-size: 0.85em; font-weight: bold; transition: all 0.2s ease-in-out; user-select: none; }
+        .slot-btn.disponible { border-color: #2ecc71; color: #27ae60; background-color: #eafaf1; }
+        .slot-btn.disponible:hover { background-color: #2ecc71; color: white; }
+        .slot-btn.ocupado { border-color: #e74c3c; color: #c0392b; background-color: #fceae9; cursor: not-allowed; opacity: 0.7; }
+        .slot-btn.seleccionado { background-color: #2ecc71 !important; color: white !important; box-shadow: 0 4px 6px rgba(46, 204, 113, 0.4); transform: translateY(-2px); border-color: #27ae60; }
+        .status-icon { margin-right: 4px; font-size: 1.1em; }
+        
+        .btn-cancelar { background: none; border: none; cursor: pointer; font-size: 1.2em; opacity: 0.6; transition: opacity 0.2s; }
+        .btn-cancelar:hover { opacity: 1; transform: scale(1.1); }
+
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); z-index: 1000; justify-content: center; align-items: center;
+            backdrop-filter: blur(2px);
+        }
+        .modal-content {
+            background: white; padding: 25px; border-radius: 8px; width: 100%; max-width: 450px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative;
+            border-top: 5px solid #9b59b6; animation: modalFadeIn 0.3s;
+        }
+        @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .close-modal {
+            position: absolute; top: 15px; right: 15px; background: none; border: none;
+            font-size: 1.2em; cursor: pointer; color: #7f8c8d; transition: color 0.2s;
+        }
+        .close-modal:hover { color: #c0392b; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2> Recepción Central | Bienvenido(a) {{ recepcionista.nombre }}</h2>
+        <div class="header-buttons">
+            <button class="btn-reportar" onclick="abrirModalSoporte()">⚠️ Reportar Falla</button>
+            <a href="{% url 'login' %}" class="btn-logout">Cerrar Sesión </a>
+        </div>
+    </div>
+
+    <div class="container">
+        {% if not en_turno %}
+    <div style="background-color: #e74c3c; color: white; text-align: center; padding: 12px; font-weight: bold; border-radius: 5px; margin-bottom: 20px;">
+        ⛔ USTED SE ENCUENTRA FUERA DE SU HORARIO LABORAL. LAS FUNCIONES DE REGISTRO ESTÁN DESACTIVADAS.
+    </div>
+{% endif %}
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="alert {% if 'error' in message.tags %}alert-error{% else %}alert-success{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="emergencia-bar">
+            <div>
+                <h3 style="margin: 0; color: #c0392b; font-size: 1.3em;">🚨 Ingreso Rápido de Emergencia</h3>
+                <p style="margin: 5px 0 0 0; color: #555; font-size: 0.9em;">Un clic asigna un paciente "Desconocido" al médico disponible más cercano inmediatamente.</p>
+            </div>
+            <form action="{% url 'recepcion' %}" method="POST" style="margin: 0;">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="emergencia">
+                <button type="submit" {% if not en_turno %}disabled style="opacity:0.5; cursor:not-allowed; background:#7f8c8d;"{% else %}style="background: #e74c3c; color: white; border: none; padding: 12px 25px; font-size: 1.1em; font-weight: bold; border-radius: 5px; cursor: pointer; box-shadow: 0 4px 10px rgba(231, 76, 60, 0.4); transition: transform 0.2s;"{% endif %}>
+                    Ingresar Emergencia 
+                </button>
+            </form>
+        </div>
+
+        <div class="top-grid">
+            <!-- 1. REGISTRAR PACIENTE -->
+            <div class="card" style="border-color: #2ecc71;">
+                <h3> 1. Registrar Nuevo Paciente</h3>
+                <form action="{% url 'recepcion' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="nuevo_paciente">
+                    
+                    <div class="form-group" style="display: flex; gap: 10px;">
+                        <div style="flex: 1;">
+                            <label>Nombre(s):</label>
+                            <input type="text" name="nombre" required>
+                        </div>
+                        <div style="flex: 1;">
+                            <label>A. Paterno:</label>
+                            <input type="text" name="apellido_paterno" required>
+                        </div>
+                        <div style="flex: 1;">
+                            <label>A. Materno:</label>
+                            <input type="text" name="apellido_materno">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="display: flex; gap: 10px;">
+                        <div style="flex: 1;">
+                            <label>Edad:</label>
+                            <input type="number" name="edad" min="0" max="120" placeholder="Ej: 25" required>
+                        </div>
+                        <div style="flex: 1;">
+                            <label>Género:</label>
+                            <select name="genero" required>
+                                <option value="Masculino">Masculino</option>
+                                <option value="Femenino">Femenino</option>
+                                <option value="Otro">Otro</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>CURP (18 caracteres):</label>
+                        <input type="text" name="curp" maxlength="18" minlength="18" pattern="[A-Za-z0-9]{18}" title="La CURP debe contener exactamente 18 caracteres alfanuméricos" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();" placeholder="18 CARACTERES ALFANUMÉRICOS" required style="text-transform: uppercase;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Teléfono de Contacto:</label>
+                        <input type="text" name="telefono" maxlength="10" minlength="10" pattern="\d{10}" title="Debe contener exactamente 10 números" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="10 dígitos" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Tipo de Sangre:</label>
+                        <select name="tipo_sangre" required>
+                            <option value="O+">O positivo (O+)</option>
+                            <option value="O-">O negativo (O-)</option>
+                            <option value="A+">A positivo (A+)</option>
+                            <option value="A-">A negativo (A-)</option>
+                            <option value="B+">B positivo (B+)</option>
+                            <option value="B-">B negativo (B-)</option>
+                            <option value="AB+">AB positivo (AB+)</option>
+                            <option value="AB-">AB negativo (AB-)</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn-submit" {% if not en_turno %}disabled style="opacity:0.5; cursor:not-allowed;"{% endif %}>Guardar Paciente </button>
+                </form>
+            </div>
+
+            <!-- 2. AGENDAR CITA -->
+            <div class="card" style="border-color: #3498db;">
+                <h3> 2. Agendar Cita</h3>
+                <form action="{% url 'recepcion' %}" method="POST">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="agendar_cita">
+                    
+                    <div class="form-group">
+                        <label>Seleccionar Paciente:</label>
+                        <select name="paciente_id" required>
+                            <option value="">-- Seleccione un paciente --</option>
+                            {% for p in pacientes_agendar %}
+                                <option value="{{ p.id }}">{{ p.apellido_paterno }} {{ p.apellido_materno }} {{ p.nombre }} ({{ p.curp }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Día de la Cita:</label>
+                        <input type="date" name="fecha_cita" id="fecha_cita" required onchange="cargarHorarios()">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Médico Disponible:</label>
+                        <select name="medico_id" id="medico_select" required onchange="cargarHorarios()">
+                            <option value="">-- Seleccione un médico --</option>
+                            {% for m in medicos %}
+                                <option value="{{ m.id }}">Dr(a). {{ m.nombre }} - {{ m.especialidad }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Horarios Disponibles (Bloques de 30 min):</label>
+                        <input type="hidden" name="hora" id="hora_seleccionada" required>
+                        <div id="contenedor_horarios" class="horarios-grid">
+                            <span style="grid-column: 1 / -1; color: gray; font-size: 0.9em;">-- Seleccione Fecha y Médico --</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Motivo de la Consulta:</label>
+                        <input type="text" name="motivo" placeholder="Ej: Dolor abdominal, Evaluación general..." required>
+                    </div>
+
+                    <button type="submit" class="btn-submit btn-blue" {% if not en_turno %}disabled style="opacity:0.5; cursor:not-allowed;"{% endif %}>Confirmar Cita </button>
+                </form>
+            </div>
+
+            <!-- 3. MONITOR SALA DE ESPERA -->
+            <div class="card" style="border-color: #f1c40f;">
+                <h3> 3. Monitor: Sala de Espera </h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <!-- Día y Hora -->
+                            <th>Día y Hora</th>
+                            <th>Paciente</th>
+                            <th>Doctor</th>
+                            <th>Estatus</th>
+                            <th style="text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cita in citas_hoy %}
+                        <tr {% if 'EMERGENCIA' in cita.motivo %}style="background-color: #fceae9;"{% endif %}>
+                            <!-- SECCIÓN MODIFICADA: Muestra fecha y luego la hora -->
+                            <td>
+                                <div style="font-size: 0.9em; color: #7f8c8d; font-weight: normal;">{{ cita.fecha|date:"d/m/Y" }}</div>
+                                <strong>{{ cita.hora|time:"H:i" }}</strong>
+                            </td>
+                            <td>
+                                {{ cita.paciente.nombre }} {{ cita.paciente.apellido_paterno }}<br>
+                                {% if 'EMERGENCIA' in cita.motivo %}
+                                    <small style="color:#c0392b; font-weight:bold;">🚨 {{ cita.motivo }}</small>
+                                {% else %}
+                                    <small style="color:gray;">{{ cita.motivo }}</small>
+                                {% endif %}
+                            </td>
+                            <td>Dr(a). {{ cita.medico.nombre }}</td>
+                            <td>
+                                {% if 'EMERGENCIA' in cita.motivo %}
+                                    <span class="badge-danger">Prioridad Alta </span>
+                                {% elif 'Espera Extra' in cita.estado %}
+                                    <span class="badge-extra">Espera Extra </span>
+                                {% else %}
+                                    <span class="badge-warning">En Espera </span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center;">
+                                {% if 'EMERGENCIA' not in cita.motivo %}
+                                <form action="{% url 'recepcion' %}" method="POST" style="margin: 0;" onsubmit="return confirm('¿Seguro que deseas CANCELAR esta cita de forma permanente?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="accion" value="cancelar_cita">
+                                    <input type="hidden" name="cita_id" value="{{ cita.id }}">
+                                    <button type="submit" class="btn-cancelar" title="Cancelar Cita" {% if not en_turno %}disabled style="opacity:0.3; cursor:not-allowed;"{% endif %}>❌</button>
+                                </form>
+                                {% else %}
+                                <span title="No se puede cancelar una emergencia desde recepción" style="font-size: 1.2em; opacity: 0.5; cursor: not-allowed;">⛔</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align: center;">No hay citas agendadas para hoy.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4. DIRECTORIO DE PACIENTES -->
+        <div class="table-section">
+            <h3> 4. Directorio de Pacientes Registrados</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre Completo</th>
+                        <th>Edad</th>
+                        <th>Género</th>
+                        <th>CURP</th>
+                        <th>Teléfono</th>
+                        <th>Tipo Sangre</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for paciente in pacientes_directorio %}
+                    <tr>
+                        <td><strong>#{{ forloop.counter }}</strong></td>
+                        <td>{{ paciente.apellido_paterno }} {{ paciente.apellido_materno }} {{ paciente.nombre }}</td>
+                        <td>{{ paciente.edad|default:"--" }} años</td>
+                        <td>{{ paciente.genero|default:"--" }}</td>
+                        <td style="text-transform: uppercase;">
+                            <small>
+                                {% if paciente.tipo_sangre == 'N/A' %}
+                                    ------------------
+                                {% else %}
+                                    {{ paciente.curp }}
+                                {% endif %}
+                            </small>
+                        </td>
+                        <td>{{ paciente.telefono }}</td>
+                        <td>
+                            {% if paciente.tipo_sangre == 'N/A' %}
+                                <span style="color: gray;">Desconocido</span>
+                            {% else %}
+                                <strong>{{ paciente.tipo_sangre }}</strong>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" style="text-align: center;">No hay pacientes registrados aún.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODAL SOPORTE TÉCNICO -->
+    <div class="modal-overlay" id="modalSoporte">
+        <div class="modal-content">
+            <button class="close-modal" onclick="cerrarModalSoporte()">✖</button>
+            <h3 style="margin-top: 0; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px;">🚨 Reportar Falla del Sistema</h3>
+            
+            <form action="{% url 'recepcion' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="nuevo_ticket">
+                <input type="hidden" name="area" value="Recepción">
+                
+                <div class="form-group">
+                    <label>Tu Nombre / Recepcionista:</label>
+                    <input type="text" name="empleado" value="{{ recepcionista.nombre }}" required readonly style="background: #f8f9fa;">
+                </div>
+                
+                <div class="form-group">
+                    <label>Descripción del Problema:</label>
+                    <textarea name="falla" placeholder="Ej: La impresora de tickets de citas no enciende, el sistema va muy lento..." required></textarea>
+                </div>
+                
+                <button type="submit" class="btn-submit btn-purple">Generar Ticket de Soporte 🎫</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const modalSoporte = document.getElementById('modalSoporte');
+        
+        function abrirModalSoporte() {
+            modalSoporte.style.display = 'flex';
+        }
+        
+        function cerrarModalSoporte() {
+            modalSoporte.style.display = 'none';
+        }
+        
+        window.addEventListener('click', function(event) {
+            if (event.target === modalSoporte) {
+                cerrarModalSoporte();
+            }
+        });
+
+        // SECCIÓN MODIFICADA: Forzar que el calendario bloquee días en el pasado apenas carga la página
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputFecha = document.getElementById('fecha_cita');
+            const hoy = new Date();
+            const year = hoy.getFullYear();
+            const month = String(hoy.getMonth() + 1).padStart(2, '0');
+            const day = String(hoy.getDate()).padStart(2, '0');
+            
+            // Establece el límite inferior al día de hoy localmente
+            inputFecha.min = `${year}-${month}-${day}`;
+        });
+
+        // Lógica AJAX para consultar horarios
+        const medicoSelect = document.getElementById('medico_select');
+        const fechaInput = document.getElementById('fecha_cita');
+        const contenedorHorarios = document.getElementById('contenedor_horarios');
+        const inputHora = document.getElementById('hora_seleccionada');
+
+        function cargarHorarios() {
+            const medicoId = medicoSelect.value;
+            const fechaStr = fechaInput.value;
+            
+            contenedorHorarios.innerHTML = '';
+            inputHora.value = ''; 
+            
+            if (!medicoId || !fechaStr) {
+                contenedorHorarios.innerHTML = '<span style="grid-column: 1 / -1; color: gray; font-size: 0.9em;">-- Seleccione Fecha y Médico --</span>';
+                return;
+            }
+            
+            // Petición al Backend
+            fetch(`/api/horarios/?medico_id=${medicoId}&fecha=${fechaStr}`)
+                .then(response => response.json())
+                .then(data => {
+                    const slots = data.slots;
+                    
+                    if (slots.length > 0) {
+                        slots.forEach(slot => {
+                            const btn = document.createElement('div');
+                            btn.classList.add('slot-btn');
+                            
+                            if (slot.ocupado) {
+                                btn.classList.add('ocupado');
+                                btn.innerHTML = `<span class="status-icon">❌</span> ${slot.hora}`;
+                            } else {
+                                btn.classList.add('disponible');
+                                btn.innerHTML = `<span class="status-icon">🟢</span> ${slot.hora}`;
+                                
+                                btn.addEventListener('click', function() {
+                                    document.querySelectorAll('.slot-btn.disponible').forEach(b => b.classList.remove('seleccionado'));
+                                    this.classList.add('seleccionado');
+                                    inputHora.value = slot.hora;
+                                });
+                            }
+                            contenedorHorarios.appendChild(btn);
+                        });
+                    } else {
+                        contenedorHorarios.innerHTML = '<span style="grid-column: 1 / -1; color: #e74c3c; font-size: 0.9em;">No hay horarios configurados para este médico.</span>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al cargar horarios:', error);
+                    contenedorHorarios.innerHTML = '<span style="grid-column: 1 / -1; color: #e74c3c; font-size: 0.9em;">Error al conectar con el servidor.</span>';
+                });
+        }
+    </script>
+</body>
+</html>

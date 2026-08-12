@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel de Administrador</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; }
+        .header { background: #1a2226; color: #fff; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* BOTONES DEL HEADER */
+        .header-actions { display: flex; align-items: center; gap: 10px; }
+        .btn-falla { background: #f39c12; color: white; padding: 8px 15px; border-radius: 5px; font-weight: bold; border: none; cursor: pointer; font-size: 0.9em; }
+        .btn-logout { background: #c0392b; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; border: 1px solid #e74c3c; font-size: 0.9em; }
+        
+        .container { display: flex; padding: 20px; gap: 20px; }
+        
+        /* COLUMNA IZQUIERDA - FORMULARIO */
+        .sidebar { width: 300px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); height: fit-content; }
+        .sidebar h3 { margin-top: 0; font-size: 1.1em; color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 0.85em; font-weight: bold; color: #555; margin-bottom: 5px; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
+        .time-inputs { display: flex; gap: 10px; }
+        .time-inputs > div { flex: 1; }
+        
+        .btn-submit { width: 100%; background: #2980b9; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        
+        /* COLUMNA DERECHA - TABLAS Y ESTADÍSTICAS */
+        .main-content { flex: 1; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: #fff; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-bottom: 4px solid #3498db; }
+        .stat-card h2 { margin: 0; font-size: 2em; color: #2c3e50; }
+        .stat-card p { margin: 5px 0 0 0; color: #7f8c8d; font-size: 0.8em; font-weight: bold; text-transform: uppercase; }
+
+        .data-section { background: #fff; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .data-section h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; font-size: 1.1em; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 0.85em; margin-bottom: 10px;}
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #555; }
+        
+        .btn-sm { padding: 5px 10px; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 0.9em; text-decoration: none; display: inline-block; }
+        .btn-edit { background: #f1c40f; color: #000; font-weight:bold; }
+        .btn-delete { background: #e74c3c; font-weight:bold; }
+        .btn-info { background: #3498db; font-weight:bold; } /* Nuevo color para botón de expediente */
+
+        /* Estilos de los mensajes */
+        .messages { margin: 20px 20px 0 20px; }
+        .alert { padding: 12px 15px; border-radius: 5px; font-weight: bold; margin-bottom: 10px; color: white; }
+        .alert-error { background: #e74c3c; border-left: 5px solid #c0392b; }
+        .alert-success { background: #2ecc71; border-left: 5px solid #27ae60; }
+
+        /* Estilos de la Ventana Modal */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fff; margin: 5% auto; padding: 20px; border-radius: 8px; width: 450px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-header { font-size: 1.2em; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+        .btn-cancel { width: 100%; background: #95a5a6; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2> Panel de Administrador | Control Total</h2>
+        <div class="header-actions">
+            <button type="button" class="btn-falla" onclick="abrirModalFalla()">⚠️ Reportar Falla</button>
+            <a href="{% url 'login' %}" class="btn-logout">Cerrar Sesión </a>
+        </div>
+    </div>
+
+    <!-- Mensajes de Error/Éxito -->
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="alert {% if 'error' in message.tags %}alert-error{% else %}alert-success{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="container">
+        
+        <!-- SIDEBAR - REGISTRAR EMPLEADO -->
+        <div class="sidebar">
+            <h3>👤 Registrar Nuevo Empleado</h3>
+            <form action="{% url 'administrador' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="crear_empleado">
+
+                <div class="form-group">
+                    <label>Rol en el Hospital:</label>
+                    <select name="rol" id="rolSelect" required onchange="toggleMedicoFields()">
+                        <option value="medico">Médico General / Especialista</option>
+                        <option value="recepcion">Personal de Recepción</option>
+                        <option value="enfermeria">Personal de Enfermería</option>
+                        <option value="soporte">Soporte Técnico</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Nombre Completo:</label>
+                    <input type="text" name="nombre" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Teléfono (10 dígitos exactos):</label>
+                    <input type="text" name="telefono" maxlength="10" minlength="10" pattern="\d{10}" title="Debe contener exactamente 10 números" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+                </div>
+
+                <div class="time-inputs form-group">
+                    <div>
+                        <label>Entrada:</label>
+                        <select name="hora_inicio" required>
+                            <option value="00:00">00:00</option><option value="01:00">01:00</option>
+                            <option value="02:00">02:00</option><option value="03:00">03:00</option>
+                            <option value="04:00">04:00</option><option value="05:00">05:00</option>
+                            <option value="06:00">06:00</option><option value="07:00">07:00</option>
+                            <option value="08:00" selected>08:00</option><option value="09:00">09:00</option>
+                            <option value="10:00">10:00</option><option value="11:00">11:00</option>
+                            <option value="12:00">12:00</option><option value="13:00">13:00</option>
+                            <option value="14:00">14:00</option><option value="15:00">15:00</option>
+                            <option value="16:00">16:00</option><option value="17:00">17:00</option>
+                            <option value="18:00">18:00</option><option value="19:00">19:00</option>
+                            <option value="20:00">20:00</option><option value="21:00">21:00</option>
+                            <option value="22:00">22:00</option><option value="23:00">23:00</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Salida:</label>
+                        <select name="hora_fin" required>
+                            <option value="00:00">00:00</option><option value="01:00">01:00</option>
+                            <option value="02:00">02:00</option><option value="03:00">03:00</option>
+                            <option value="04:00">04:00</option><option value="05:00">05:00</option>
+                            <option value="06:00">06:00</option><option value="07:00">07:00</option>
+                            <option value="08:00">08:00</option><option value="09:00">09:00</option>
+                            <option value="10:00">10:00</option><option value="11:00">11:00</option>
+                            <option value="12:00">12:00</option><option value="13:00">13:00</option>
+                            <option value="14:00">14:00</option><option value="15:00">15:00</option>
+                            <option value="16:00" selected>16:00</option><option value="17:00">17:00</option>
+                            <option value="18:00">18:00</option><option value="19:00">19:00</option>
+                            <option value="20:00">20:00</option><option value="21:00">21:00</option>
+                            <option value="22:00">22:00</option><option value="23:00">23:00</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="medicoCampos">
+                    <div class="form-group">
+                        <label>Especialidad:</label>
+                        <input type="text" name="especialidad">
+                    </div>
+                    <div class="form-group">
+                        <label>Cédula Profesional (5 dígitos):</label>
+                        <input type="text" name="cedula" maxlength="5" minlength="5" pattern="\d{5}" title="Debe contener exactamente 5 números" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                    </div>
+                </div>
+
+                <div class="form-group" style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 15px;">
+                    <label style="color:#2980b9;">🔑 Credenciales de Acceso</label>
+                    <input type="text" name="usuario" placeholder="Usuario (Ej: gabo123)" required style="margin-bottom: 8px;">
+                    <input type="password" name="password" placeholder="Contraseña" required>
+                </div>
+
+                <button type="submit" class="btn-submit">Registrar Empleado </button>
+            </form>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            
+            <!-- ESTADÍSTICAS -->
+            <div class="stats-grid">
+                <div class="stat-card" style="border-color: #3498db;">
+                    <h2>{{ medicos.count }}</h2>
+                    <p> Médicos</p>
+                </div>
+                <div class="stat-card" style="border-color: #2ecc71;">
+                    <h2>{{ total_personal }}</h2>
+                    <p> Personal Admin</p>
+                </div>
+                <div class="stat-card" style="border-color: #f1c40f;">
+                    <h2>{{ pacientes.count }}</h2>
+                    <p> Pacientes</p>
+                </div>
+                <div class="stat-card" style="border-color: #9b59b6; background: #fdfefe;">
+                    <h2 style="color: #27ae60;">ONLINE</h2>
+                    <p>🌐 Sistema</p>
+                </div>
+            </div>
+
+            <!-- TABLA 1: MÉDICOS -->
+            <div class="data-section">
+                <h3> Plantilla Médica</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Especialidad</th>
+                            <th>Horario / Teléfono</th>
+                            <th>Usuario / Contraseña</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for medico in medicos %}
+                        <tr>
+                            <td><strong>Dr(a). {{ medico.nombre }}</strong></td>
+                            <td>{{ medico.especialidad }}<br><small>Cédula: {{ medico.cedula }}</small></td>
+                            <td>🕒 {{ medico.horario }}<br>📞 {{ medico.telefono }}</td>
+                            <td>👤 {{ medico.usuario }}<br>🔑 {{ medico.password }}</td>
+                            <td>
+                                <button type="button" class="btn-sm btn-edit" 
+                                        data-id="{{ medico.id }}"
+                                        data-nombre="{{ medico.nombre }}"
+                                        data-especialidad="{{ medico.especialidad }}"
+                                        data-cedula="{{ medico.cedula }}"
+                                        data-telefono="{{ medico.telefono }}"
+                                        data-horario="{{ medico.horario }}"
+                                        data-usuario="{{ medico.usuario }}"
+                                        data-password="{{ medico.password }}"
+                                        onclick="abrirModalMedico(this)">✏️</button>
+
+                                <form action="{% url 'administrador' %}" method="POST" style="display:inline;" onsubmit="return confirm('¿Eliminar a este médico?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="accion" value="eliminar_medico">
+                                    <input type="hidden" name="id" value="{{ medico.id }}">
+                                    <button type="submit" class="btn-sm btn-delete">🗑️</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- TABLA 2: RECEPCIÓN -->
+            <div class="data-section">
+                <h3> Personal de Recepción</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Horario / Teléfono</th>
+                            <th>Usuario / Contraseña</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in recepcionistas %}
+                        <tr>
+                            <td>{{ p.nombre }}</td>
+                            <td>🕒 {{ p.horario }}<br>📞 {{ p.telefono }}</td>
+                            <td>👤 {{ p.usuario }}<br>🔑 {{ p.password }}</td>
+                            <td>
+                                <button type="button" class="btn-sm btn-edit" 
+                                        data-id="{{ p.id }}"
+                                        data-nombre="{{ p.nombre }}"
+                                        data-telefono="{{ p.telefono }}"
+                                        data-horario="{{ p.horario }}"
+                                        data-usuario="{{ p.usuario }}"
+                                        data-password="{{ p.password }}"
+                                        onclick="abrirModalPersonal(this)">✏️</button>
+
+                                <form action="{% url 'administrador' %}" method="POST" style="display:inline;" onsubmit="return confirm('¿Eliminar personal?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="accion" value="eliminar_personal">
+                                    <input type="hidden" name="id" value="{{ p.id }}">
+                                    <button type="submit" class="btn-sm btn-delete">🗑️</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- TABLA 3: ENFERMERÍA -->
+            <div class="data-section">
+                <h3> Personal de Enfermería</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Horario / Teléfono</th>
+                            <th>Usuario / Contraseña</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in enfermeros %}
+                        <tr>
+                            <td>{{ p.nombre }}</td>
+                            <td>🕒 {{ p.horario }}<br>📞 {{ p.telefono }}</td>
+                            <td>👤 {{ p.usuario }}<br>🔑 {{ p.password }}</td>
+                            <td>
+                                <button type="button" class="btn-sm btn-edit" 
+                                        data-id="{{ p.id }}"
+                                        data-nombre="{{ p.nombre }}"
+                                        data-telefono="{{ p.telefono }}"
+                                        data-horario="{{ p.horario }}"
+                                        data-usuario="{{ p.usuario }}"
+                                        data-password="{{ p.password }}"
+                                        onclick="abrirModalPersonal(this)">✏️</button>
+
+                                <form action="{% url 'administrador' %}" method="POST" style="display:inline;" onsubmit="return confirm('¿Eliminar personal?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="accion" value="eliminar_personal">
+                                    <input type="hidden" name="id" value="{{ p.id }}">
+                                    <button type="submit" class="btn-sm btn-delete">🗑️</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- TABLA 4: SOPORTE TÉCNICO -->
+            <div class="data-section">
+                <h3> Soporte Técnico</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Horario / Teléfono</th>
+                            <th>Usuario / Contraseña</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in tecnicos %}
+                        <tr>
+                            <td>{{ p.nombre }}</td>
+                            <td>🕒 {{ p.horario }}<br>📞 {{ p.telefono }}</td>
+                            <td>👤 {{ p.usuario }}<br>🔑 {{ p.password }}</td>
+                            <td>
+                                <button type="button" class="btn-sm btn-edit" 
+                                        data-id="{{ p.id }}"
+                                        data-nombre="{{ p.nombre }}"
+                                        data-telefono="{{ p.telefono }}"
+                                        data-horario="{{ p.horario }}"
+                                        data-usuario="{{ p.usuario }}"
+                                        data-password="{{ p.password }}"
+                                        onclick="abrirModalPersonal(this)">✏️</button>
+
+                                <form action="{% url 'administrador' %}" method="POST" style="display:inline;" onsubmit="return confirm('¿Eliminar personal?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="accion" value="eliminar_personal">
+                                    <input type="hidden" name="id" value="{{ p.id }}">
+                                    <button type="submit" class="btn-sm btn-delete">🗑️</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- TABLA 5: PACIENTES ACTUALIZADA -->
+            <div class="data-section">
+                <h3> Directorio de Pacientes</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>CURP</th>
+                            <th>Teléfono</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pac in pacientes %}
+                        <tr>
+                            <td>#{{ forloop.counter }}</td>
+                            <td>{{ pac.nombre }}</td>
+                            <td>
+                                {% if "EMER" in pac.curp %}
+                                    ------
+                                {% else %}
+                                    {{ pac.curp }}
+                                {% endif %}
+                            </td>
+                            <td>{{ pac.telefono }}</td>
+                            <td>
+                                <!-- NUEVO: BOTÓN VER EXPEDIENTE -->
+                                <!-- Nota: Ajusta 'expediente_paciente' por el nombre de tu URL real en Django -->
+                                <a href="{% url 'expediente_paciente' pac.id %}" class="btn-sm btn-info" title="Ver Expediente Completo">📂</a>
+                                
+                                <!-- NUEVO: BOTÓN EDICIÓN PACIENTE -->
+                                <button type="button" class="btn-sm btn-edit" 
+                                        data-id="{{ pac.id }}"
+                                        data-nombre="{{ pac.nombre }}"
+                                        data-curp="{{ pac.curp }}"
+                                        data-telefono="{{ pac.telefono }}"
+                                        data-sangre="{{ pac.tipo_sangre }}"
+                                        title="Editar Paciente"
+                                        onclick="abrirModalPaciente(this)">✏️</button>
+
+                                <form action="{% url 'administrador' %}" method="POST" style="display:inline;" onsubmit="return confirm('¿Seguro de eliminar a este paciente?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="accion" value="eliminar_paciente">
+                                    <input type="hidden" name="id" value="{{ pac.id }}">
+                                    <button type="submit" class="btn-sm btn-delete" title="Eliminar">🗑️</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODAL REPORTAR FALLA -->
+    <div id="modalReportarFalla" class="modal">
+        <div class="modal-content">
+            <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>🚨 Reportar Falla del Sistema</span>
+                <span style="cursor:pointer;" onclick="cerrarModal('modalReportarFalla')">&times;</span>
+            </div>
+            <form action="{% url 'administrador' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="reportar_falla">
+                
+                <div class="form-group">
+                    <label>Tu Nombre / Administrador:</label>
+                    <input type="text" name="nombre_reporta" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Descripción del Problema:</label>
+                    <textarea name="descripcion" rows="4" style="width:100%; border:1px solid #ccc; border-radius:4px; padding:8px; box-sizing:border-box; font-family:inherit;" placeholder="Ej: La impresora de tickets de citas no enciende, el sistema va muy lento..." required></textarea>
+                </div>
+
+                <button type="submit" class="btn-submit" style="background:#8e44ad;">Generar Ticket de Soporte 🎟️</button>
+                <button type="button" class="btn-cancel" onclick="cerrarModal('modalReportarFalla')">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR MÉDICO -->
+    <div id="modalEditMedico" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">✏️ Editar Médico</div>
+            <form action="{% url 'administrador' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="editar_medico">
+                <input type="hidden" name="id" id="e_med_id">
+                
+                <div class="form-group"><label>Nombre:</label><input type="text" name="nombre" id="e_med_nombre" required></div>
+                <div class="form-group"><label>Especialidad:</label><input type="text" name="especialidad" id="e_med_especialidad" required></div>
+                
+                <div class="form-group"><label>Cédula (5 dígitos):</label><input type="text" name="cedula" id="e_med_cedula" maxlength="5" minlength="5" pattern="\d{5}" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required></div>
+                <div class="form-group"><label>Teléfono (10 dígitos):</label><input type="text" name="telefono" id="e_med_telefono" maxlength="10" minlength="10" pattern="\d{10}" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required></div>
+                
+                <div class="time-inputs form-group">
+                    <div>
+                        <label>Entrada:</label>
+                        <select name="hora_inicio" id="e_med_inicio" required></select>
+                    </div>
+                    <div>
+                        <label>Salida:</label>
+                        <select name="hora_fin" id="e_med_fin" required></select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Usuario / Contraseña:</label>
+                    <input type="text" name="usuario" id="e_med_usuario" style="margin-bottom:5px;" required>
+                    <input type="text" name="password" id="e_med_password" required>
+                </div>
+
+                <button type="submit" class="btn-submit">Guardar Cambios</button>
+                <button type="button" class="btn-cancel" onclick="cerrarModal('modalEditMedico')">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR PERSONAL -->
+    <div id="modalEditPersonal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">✏️ Editar Personal</div>
+            <form action="{% url 'administrador' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="editar_personal">
+                <input type="hidden" name="id" id="e_per_id">
+                
+                <div class="form-group"><label>Nombre:</label><input type="text" name="nombre" id="e_per_nombre" required></div>
+                <div class="form-group"><label>Teléfono (10 dígitos):</label><input type="text" name="telefono" id="e_per_telefono" maxlength="10" minlength="10" pattern="\d{10}" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required></div>
+                
+                <div class="time-inputs form-group">
+                    <div>
+                        <label>Entrada:</label>
+                        <select name="hora_inicio" id="e_per_inicio" required></select>
+                    </div>
+                    <div>
+                        <label>Salida:</label>
+                        <select name="hora_fin" id="e_per_fin" required></select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Usuario / Contraseña:</label>
+                    <input type="text" name="usuario" id="e_per_usuario" style="margin-bottom:5px;" required>
+                    <input type="text" name="password" id="e_per_password" required>
+                </div>
+
+                <button type="submit" class="btn-submit">Guardar Cambios</button>
+                <button type="button" class="btn-cancel" onclick="cerrarModal('modalEditPersonal')">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- NUEVO: MODAL EDITAR PACIENTE -->
+    <div id="modalEditPaciente" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">✏️ Editar Paciente</div>
+            <form action="{% url 'administrador' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="editar_paciente">
+                <input type="hidden" name="id" id="e_pac_id">
+                
+                <div class="form-group">
+                    <label>Nombre Completo:</label>
+                    <input type="text" name="nombre" id="e_pac_nombre" required>
+                </div>
+                <div class="form-group">
+                    <label>CURP:</label>
+                    <input type="text" name="curp" id="e_pac_curp" required>
+                </div>
+                <!-- ✅ CÓDIGO NUEVO (Bloquea letras al instante y frena a los 10 dígitos): -->
+                <div class="form-group">
+                    <label>Teléfono (10 dígitos exactos):</label>
+                    <input type="text" 
+                        name="telefono" 
+                        id="e_pac_telefono" 
+                        maxlength="10" 
+                        minlength="10" 
+                        pattern="\d{10}" 
+                        title="Debe contener exactamente 10 números" 
+                        oninput="this.value = this.value.replace(/[^0-9]/g, '')" 
+                        required>
+                </div>
+                <div class="form-group">
+                    <label>Tipo de Sangre:</label>
+                    <input type="text" name="tipo_sangre" id="e_pac_sangre" required>
+                </div>
+
+                <button type="submit" class="btn-submit">Guardar Cambios</button>
+                <button type="button" class="btn-cancel" onclick="cerrarModal('modalEditPaciente')">Cancelar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script>
+        function toggleMedicoFields() {
+            var rol = document.getElementById("rolSelect").value;
+            document.getElementById("medicoCampos").style.display = (rol === "medico") ? "block" : "none";
+        }
+        toggleMedicoFields();
+
+        const horasOptions = `
+            <option value="00:00">00:00</option><option value="01:00">01:00</option>
+            <option value="02:00">02:00</option><option value="03:00">03:00</option>
+            <option value="04:00">04:00</option><option value="05:00">05:00</option>
+            <option value="06:00">06:00</option><option value="07:00">07:00</option>
+            <option value="08:00">08:00</option><option value="09:00">09:00</option>
+            <option value="10:00">10:00</option><option value="11:00">11:00</option>
+            <option value="12:00">12:00</option><option value="13:00">13:00</option>
+            <option value="14:00">14:00</option><option value="15:00">15:00</option>
+            <option value="16:00">16:00</option><option value="17:00">17:00</option>
+            <option value="18:00">18:00</option><option value="19:00">19:00</option>
+            <option value="20:00">20:00</option><option value="21:00">21:00</option>
+            <option value="22:00">22:00</option><option value="23:00">23:00</option>
+        `;
+        document.getElementById('e_med_inicio').innerHTML = horasOptions;
+        document.getElementById('e_med_fin').innerHTML = horasOptions;
+        document.getElementById('e_per_inicio').innerHTML = horasOptions;
+        document.getElementById('e_per_fin').innerHTML = horasOptions;
+
+        function abrirModalFalla() {
+            document.getElementById('modalReportarFalla').style.display = 'block';
+        }
+
+        function abrirModalMedico(buttonElement) {
+            const data = buttonElement.dataset;
+            document.getElementById('e_med_id').value = data.id;
+            document.getElementById('e_med_nombre').value = data.nombre;
+            document.getElementById('e_med_especialidad').value = data.especialidad;
+            document.getElementById('e_med_cedula').value = data.cedula;
+            document.getElementById('e_med_telefono').value = data.telefono;
+            document.getElementById('e_med_usuario').value = data.usuario;
+            document.getElementById('e_med_password').value = data.password;
+            
+            if (data.horario) {
+                let partes = data.horario.split('-');
+                if(partes.length === 2) {
+                    document.getElementById('e_med_inicio').value = partes[0].trim();
+                    document.getElementById('e_med_fin').value = partes[1].trim();
+                }
+            }
+            document.getElementById('modalEditMedico').style.display = 'block';
+        }
+
+        function abrirModalPersonal(buttonElement) {
+            const data = buttonElement.dataset;
+            document.getElementById('e_per_id').value = data.id;
+            document.getElementById('e_per_nombre').value = data.nombre;
+            document.getElementById('e_per_telefono').value = data.telefono;
+            document.getElementById('e_per_usuario').value = data.usuario;
+            document.getElementById('e_per_password').value = data.password;
+            
+            if (data.horario) {
+                let partes = data.horario.split('-');
+                if(partes.length === 2) {
+                    document.getElementById('e_per_inicio').value = partes[0].trim();
+                    document.getElementById('e_per_fin').value = partes[1].trim();
+                }
+            }
+            document.getElementById('modalEditPersonal').style.display = 'block';
+        }
+
+        // NUEVO: FUNCIÓN PARA ABRIR EL MODAL DE PACIENTES
+        function abrirModalPaciente(buttonElement) {
+            const data = buttonElement.dataset;
+            document.getElementById('e_pac_id').value = data.id;
+            document.getElementById('e_pac_nombre').value = data.nombre;
+            document.getElementById('e_pac_curp').value = data.curp;
+            document.getElementById('e_pac_telefono').value = data.telefono;
+            document.getElementById('e_pac_sangre').value = data.sangre;
+            
+            document.getElementById('modalEditPaciente').style.display = 'block';
+        }
+
+        function cerrarModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+    </script>
+</body>
+</html>
+

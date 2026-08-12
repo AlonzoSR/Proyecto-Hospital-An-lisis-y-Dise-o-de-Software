@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Enfermería | Sistema Hospitalario</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eef2f5; margin: 0; }
+        .header { background: #34495e; color: #fff; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .header-buttons { display: flex; gap: 10px; align-items: center; }
+        .btn-logout { background: #e74c3c; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        .btn-reportar { background: #f39c12; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 1em; transition: background 0.3s; }
+        .btn-reportar:hover { background: #e67e22; }
+        .container { padding: 20px; }
+        .messages { margin-bottom: 20px; }
+        .alert { padding: 15px; border-radius: 5px; font-weight: bold; color: white; margin-bottom: 10px; }
+        .alert-success { background: #2ecc71; border: 1px solid #27ae60; }
+        .alert-error { background: #e74c3c; border: 1px solid #c0392b; }
+        .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        .card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .card h3 { margin-top: 0; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 0.85em; font-weight: bold; color: #555; margin-bottom: 5px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .form-group textarea { resize: vertical; height: 80px; font-family: inherit; }
+        .row { display: flex; gap: 10px; }
+        .row > div { flex: 1; }
+        .btn-submit { width: 100%; background: #1abc9c; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-update { background: #f39c12; }
+        .btn-purple { background: #9b59b6; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #555; }
+        .warning-text { color: #e74c3c; font-weight: bold; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 100%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; border-top: 5px solid #9b59b6; animation: modalFadeIn 0.3s; }
+        @keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .close-modal { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.2em; cursor: pointer; color: #7f8c8d; transition: color 0.2s; }
+        .close-modal:hover { color: #c0392b; }
+        
+        /* NUEVO ESTILO: Botón de la Carpeta */
+        .btn-carpeta {
+            background-color: #ecf0f1;
+            color: #2c3e50;
+            border: 1px solid #bdc3c7;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .btn-carpeta:hover {
+            background-color: #34495e;
+            color: white;
+            border-color: #34495e;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2> Módulo 5: Personal de Enfermería | Bienvenido(a) {{ enfermero.nombre }}</h2>
+        <div class="header-buttons">
+            <button class="btn-reportar" onclick="abrirModalSoporte()">⚠️ Reportar Falla</button>
+            <a href="{% url 'login' %}" class="btn-logout">Cerrar Sesión </a>
+        </div>
+    </div>
+    <div class="container">
+        {% if not en_turno %}
+    <div style="background-color: #e74c3c; color: white; text-align: center; padding: 12px; font-weight: bold; border-radius: 5px; margin-bottom: 20px;">
+        ⛔ USTED SE ENCUENTRA FUERA DE SU HORARIO LABORAL. LAS FUNCIONES DE REGISTRO ESTÁN DESACTIVADAS.
+    </div>
+{% endif %}
+        {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                    <div class="alert {% if 'error' in message.tags %}alert-error{% else %}alert-success{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <div class="grid">
+            <div>
+                <!-- 1. Captura de Signos Vitales -->
+                <div class="card" style="border-top: 4px solid #1abc9c; margin-bottom: 20px;">
+                    <h3> Captura de Signos Vitales</h3>
+                    <form action="{% url 'enfermeria' %}" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="guardar_signos">
+                        <div class="form-group">
+                            <label>Seleccionar Paciente:</label>
+                            <select name="paciente_id" id="lista-pacientes-normal" required>
+                                <option value="">-- Selecciona un Paciente --</option>
+                                {% for p in pacientes %}
+                                    <option value="{{ p.id }}">{{ p.apellido_paterno }} {{ p.nombre }} ({{ p.curp }})</option>
+                                {% endfor %}
+                            </select>
+                            <small style="color: gray;">Nota: Cada paciente tiene un único expediente. Guardar actualizará sus datos actuales.</small>
+                        </div>
+                        <div class="row">
+                            <div class="form-group"><label>Presión Arterial (mmHg):</label><input type="text" name="presion" pattern="^\d{2,3}\/\d{2,3}$" title="Debe contener la barra diagonal (Ej: 120/80)" placeholder="Ej: 120/80" required></div>
+                            <div class="form-group"><label>Temperatura (°C):</label><input type="number" name="temperatura" step="0.1" min="30.0" max="45.0" placeholder="Ej: 36.5" required></div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group"><label>Peso (kg):</label><input type="number" name="peso" step="0.1" min="2.0" max="350.0" placeholder="Ej: 72.5" required></div>
+                            <div class="form-group"><label>Estatura (m):</label><input type="number" name="estatura" step="0.01" min="0.40" max="2.50" placeholder="Ej: 1.70" required></div>
+                        </div>
+                        <div class="form-group"><label>Saturación de Oxígeno (% SpO2):</label><input type="number" name="oxigenacion" min="30" max="100" placeholder="Ej: 98" required></div>
+                        <button type="submit" class="btn-submit" {% if not en_turno %}disabled style="opacity:0.5; cursor:not-allowed;"{% endif %}>Guardar / Actualizar Expediente </button>
+                    </form>
+                </div>
+                <!-- 2. Actualizar Identidad de Paciente -->
+                <div class="card" style="border-top: 4px solid #f39c12;">
+                    <h3> Confirmar Identidad (Emergencias)</h3>
+                    <p style="font-size: 0.8em; color: #7f8c8d; margin-top: 0;">Utilice este panel para actualizar los datos de un paciente que ingresó como desconocido.</p>
+                    <form action="{% url 'enfermeria' %}" method="POST">
+                        {% csrf_token %}
+                        <input type="hidden" name="accion" value="actualizar_paciente">
+                        <div class="form-group">
+                            <label>Seleccionar Paciente Desconocido:</label>
+                            <select name="paciente_id" id="lista-pacientes-urgencia" required>
+                                <option value="">-- Ver lista de pacientes sin identificar --</option>
+                                {% for p in pacientes_desconocidos %}
+                                    <option value="{{ p.id }}">🚨 {{ p.nombre }} - En Urgencias</option>
+                                {% empty %}
+                                    <option value="" disabled>No hay pacientes desconocidos en urgencias actualmente.</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group"><label>Nombre(s) Reales:</label><input type="text" name="nombre" required></div>
+                        <div class="row">
+                            <div class="form-group"><label>A. Paterno:</label><input type="text" name="apellido_paterno" required></div>
+                            <div class="form-group"><label>A. Materno:</label><input type="text" name="apellido_materno"></div>
+                        </div>
+                        <div class="row">
+                            <div class="form-group"><label>Edad:</label><input type="number" name="edad" min="0" max="130" required></div>
+                            <div class="form-group"><label>Género:</label><select name="genero" required><option value="">-- Seleccionar --</option><option value="Masculino">Masculino</option><option value="Femenino">Femenino</option><option value="Otro">Otro</option></select></div>
+                        </div>
+                        <div class="form-group"><label>CURP Real (18 caracteres):</label><input type="text" name="curp" maxlength="18" minlength="18" pattern="[A-Za-z0-9]{18}" title="La CURP debe contener exactamente 18 caracteres alfanuméricos (letras y números)" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();" placeholder="18 CARACTERES ALFANUMÉRICOS" required style="text-transform: uppercase;"></div>
+                        <div class="row">
+                            <div class="form-group"><label>Teléfono de Familiar:</label><input type="text" name="telefono" maxlength="10" minlength="10" pattern="\d{10}" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required></div>
+                            <div class="form-group">
+                                <label>Tipo de Sangre:</label>
+                                <select name="tipo_sangre" required><option value="O+">O+</option><option value="O-">O-</option><option value="A+">A+</option><option value="A-">A-</option><option value="B+">B+</option><option value="B-">B-</option><option value="AB+">AB+</option><option value="AB-">AB-</option></select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-submit btn-update" {% if not en_turno %}disabled style="opacity:0.5; cursor:not-allowed;"{% endif %}>Actualizar Expediente </button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- COLUMNA DERECHA: REGISTROS RECIENTES (NUEVA TABLA MINIMALISTA) -->
+            <div class="card" style="border-top: 4px solid #34495e;">
+                <h3> Expedientes Activos (Últimos Actualizados)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Paciente</th>
+                            <th>CURP</th>
+                            <th>Última Toma</th>
+                            <th style="text-align: center;">Expediente</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-signos-recientes">
+                        {% for sv in signos %}
+                        <tr>
+                            <td><strong>{{ sv.paciente.nombre }} {{ sv.paciente.apellido_paterno }}</strong></td>
+                            <td>{{ sv.paciente.curp }}</td>
+                            <td><small>{{ sv.fecha|date:"d M Y - H:i" }}</small></td>
+                            <td style="text-align: center;">
+                                <button type="button" class="btn-carpeta" 
+                                    data-nombre="{{ sv.paciente.nombre }} {{ sv.paciente.apellido_paterno }}"
+                                    data-edad="{{ sv.paciente.edad|default:'N/A' }} años / {{ sv.paciente.genero|default:'N/A' }}"
+                                    data-presion="{{ sv.presion }}"
+                                    data-temp="{{ sv.temperatura }}"
+                                    data-peso="{{ sv.peso }}kg / {{ sv.estatura }}m"
+                                    data-oxigeno="{{ sv.oxigenacion }}"
+                                    onclick="abrirCarpetaPaciente(this)">
+                                    📁 Abrir
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" style="text-align: center;">No se han registrado signos vitales aún.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SOPORTE -->
+    <div class="modal-overlay" id="modalSoporte">
+        <div class="modal-content">
+            <button class="close-modal" onclick="cerrarModalSoporte()">✖</button>
+            <h3 style="margin-top: 0; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px;">🚨 Reportar Falla del Sistema</h3>
+            <form action="{% url 'enfermeria' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="nuevo_ticket">
+                <input type="hidden" name="area" value="Enfermería">
+                <div class="form-group"><label>Tu Nombre / Enfermero(a):</label><input type="text" name="empleado" value="{{ enfermero.nombre }}" required readonly style="background: #f8f9fa;"></div>
+                <div class="form-group"><label>Descripción del Problema:</label><textarea name="falla" placeholder="Ej: El sistema no guarda los signos vitales..." required></textarea></div>
+                <button type="submit" class="btn-submit btn-purple">Generar Ticket de Soporte 🎫</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL CARPETA PACIENTE (NUEVO) -->
+    <div class="modal-overlay" id="modalCarpeta">
+        <div class="modal-content" style="border-top: 5px solid #34495e;">
+            <button class="close-modal" onclick="cerrarCarpetaPaciente()">✖</button>
+            <h3 style="margin-top: 0; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px;">📁 Signos Vitales</h3>
+            
+            <h4 id="carpeta-nombre" style="color: #34495e; margin-top: 15px; margin-bottom: 5px; font-size: 1.2em;">Nombre del Paciente</h4>
+            <p style="color: #7f8c8d; font-size: 0.9em; margin-top: 0; margin-bottom: 20px;" id="carpeta-edad">Edad / Género</p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #eee;">
+                <div><strong>🩸 Presión:</strong> <br><span id="carpeta-presion" style="color: #2c3e50; font-size: 1.1em;">--</span> mmHg</div>
+                <div><strong>🌡️ Temperatura:</strong> <br><span id="carpeta-temp" style="color: #2c3e50; font-size: 1.1em;">--</span> °C</div>
+                <div><strong>⚖️ Peso/Talla:</strong> <br><span id="carpeta-peso" style="color: #2c3e50; font-size: 1.1em;">--</span></div>
+                <div><strong>🫁 Oxígeno:</strong> <br><span id="carpeta-oxigeno" style="color: #2c3e50; font-size: 1.1em;">--</span> %</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // LÓGICA DE MODALES
+        const modalSoporte = document.getElementById('modalSoporte');
+        const modalCarpeta = document.getElementById('modalCarpeta');
+
+        function abrirModalSoporte() { modalSoporte.style.display = 'flex'; }
+        function cerrarModalSoporte() { modalSoporte.style.display = 'none'; }
+        
+        function abrirCarpetaPaciente(boton) {
+            document.getElementById('carpeta-nombre').innerText = boton.getAttribute('data-nombre');
+            document.getElementById('carpeta-edad').innerText = boton.getAttribute('data-edad');
+            
+            const temp = parseFloat(boton.getAttribute('data-temp'));
+            const oxi = parseFloat(boton.getAttribute('data-oxigeno'));
+            
+            document.getElementById('carpeta-presion').innerText = boton.getAttribute('data-presion');
+            document.getElementById('carpeta-peso').innerText = boton.getAttribute('data-peso');
+            
+            const tempSpan = document.getElementById('carpeta-temp');
+            tempSpan.innerText = temp;
+            tempSpan.style.color = (temp > 38.0 || temp < 35.0) ? '#e74c3c' : '#2c3e50';
+            
+            const oxiSpan = document.getElementById('carpeta-oxigeno');
+            oxiSpan.innerText = oxi;
+            oxiSpan.style.color = (oxi < 90) ? '#e74c3c' : '#2c3e50';
+            
+            modalCarpeta.style.display = 'flex';
+        }
+        function cerrarCarpetaPaciente() { modalCarpeta.style.display = 'none'; }
+
+        // Cerrar al hacer clic fuera del modal
+        window.addEventListener('click', function(event) { 
+            if (event.target === modalSoporte) { cerrarModalSoporte(); } 
+            if (event.target === modalCarpeta) { cerrarCarpetaPaciente(); }
+        });
+
+        // --- ACTUALIZACIÓN SILENCIOSA AJAX POLLING (ENFERMERÍA) ---
+        setInterval(function() {
+            fetch(window.location.href)
+                .then(response => response.text())
+                .then(html => {
+                    const doc = new DOMParser().parseFromString(html, "text/html");
+                    
+                    // ✅ CÓDIGO CORREGIDO:
+                    const elemNormal = document.getElementById('lista-pacientes-normal');
+                    const listNormal = doc.getElementById('lista-pacientes-normal');
+                    if (listNormal && elemNormal && document.activeElement !== elemNormal && elemNormal.value === '') {
+                        elemNormal.innerHTML = listNormal.innerHTML;
+                    }
+
+                    const elemUrgencia = document.getElementById('lista-pacientes-urgencia');
+                    const listUrgencia = doc.getElementById('lista-pacientes-urgencia');
+                    if (listUrgencia && elemUrgencia && document.activeElement !== elemUrgencia && elemUrgencia.value === '') {
+                        elemUrgencia.innerHTML = listUrgencia.innerHTML;
+                    }
+                    
+                    // Al actualizar la tabla, conservamos el funcionamiento de los nuevos botones
+                    const tablaRecientes = doc.getElementById('tabla-signos-recientes');
+                    if (tablaRecientes) {
+                        document.getElementById('tabla-signos-recientes').innerHTML = tablaRecientes.innerHTML;
+                    }
+                }).catch(error => console.log('Silenciado:', error));
+        }, 10000);
+    </script>
+</body>
+</html>

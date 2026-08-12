@@ -1,0 +1,80 @@
+:root {
+    --primary: #007bff;
+    --secondary: #17a2b8;
+    --dark: #2c3e50;
+    --light: #f8f9fa;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #eef2f5;
+    margin: 0;
+    padding: 0;
+    color: #333;
+}
+
+.navbar {
+    background-color: var(--dark);
+    color: white;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.btn-admin {
+    background-color: var(--secondary);
+    color: white;
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 30px auto;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.card h2 {
+    color: var(--dark);
+    border-bottom: 2px solid var(--light);
+    padding-bottom: 10px;
+    margin-top: 0;
+}
+
+.item-list {
+    list-style: none;
+    padding: 0;
+}
+
+.item-card {
+    background: var(--light);
+    margin-bottom: 10px;
+    padding: 12px;
+    border-left: 4px solid var(--primary);
+    border-radius: 4px;
+}
+
+.item-card strong {
+    display: block;
+    font-size: 1.1em;
+    color: #2c3e50;
+}
+
+.item-card span {
+    font-size: 0.9em;
+    color: #666;
+}
